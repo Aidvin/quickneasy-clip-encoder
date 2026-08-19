@@ -2,6 +2,8 @@
 
 A simple, portable Windows video encoder using **FFmpeg**, **SVT-AV1**, and **Opus**.
 
+This project is currently under development.
+
 The project is designed to run from a single folder without installing FFmpeg system-wide or adding FFmpeg to the Windows PATH.
 
 **Important:** FFmpeg is its own thing and is intentionally **not included** in this repository.
