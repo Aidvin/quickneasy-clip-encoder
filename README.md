@@ -161,20 +161,6 @@ This project is provided "as is", without warranty.
 The author of this project is not affiliated with or endorsed by the FFmpeg project.
 
 Users are responsible for complying with the licenses applicable to the FFmpeg build they choose to download and use.
-
-## Contributing
-
-Pull requests and improvements are welcome.
-
-Possible future improvements include:
-
-- Hardware-accelerated encoding options
-- Automatic FFmpeg download/setup
-- Encoding presets
-- Progress percentage display
-- Estimated remaining time
-- File size comparison
-- Automatic source/output size reporting
 - Resume support
 - Logging
 - Drag-and-drop encoding
