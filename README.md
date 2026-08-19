@@ -4,7 +4,7 @@ A simple, portable Windows video encoder using **FFmpeg**, **SVT-AV1**, and **Op
 
 The project is designed to run from a single folder without installing FFmpeg system-wide or adding FFmpeg to the Windows PATH.
 
-> **Important:** FFmpeg is a separate dependency and is intentionally **not included** in this repository.
+**Important:** FFmpeg is its own thing and is intentionally **not included** in this repository.
 
 ## Features
 
@@ -25,8 +25,7 @@ The project is designed to run from a single folder without installing FFmpeg sy
 
 ## Requirements
 
-- Windows 10 or later
-- Windows PowerShell 5.1 or newer
+- Windows OS
 - A Windows FFmpeg build containing:
   - `libsvtav1`
   - `libopus`
@@ -36,11 +35,9 @@ The encoder does not install FFmpeg for you.
 ## Project structure
 
 ```text
-Portable-AV1-Encoder/
+Portable-clip-encoder/
 ├── Input/
-│   └── .gitkeep
 ├── Output/
-│   └── .gitkeep
 ├── Start Encoder.bat
 ├── encode.ps1
 ├── README.md
@@ -49,7 +46,7 @@ Portable-AV1-Encoder/
 └── NOTICE.md
 ```
 
-`ffmpeg.exe` is deliberately absent from the repository.
+`ffmpeg.exe` is not included
 
 ## Installing FFmpeg
 
@@ -62,39 +59,13 @@ FFmpeg provides source code and links to Windows builds from third-party distrib
 After extracting the build, place **`ffmpeg.exe`** directly in the project root:
 
 ```text
-Portable-AV1-Encoder/
+Portable-clip-encoder/
 ├── ffmpeg.exe
 ├── Start Encoder.bat
 ├── encode.ps1
 ├── Input/
 └── Output/
 ```
-
-You do not need to add FFmpeg to Windows PATH.
-
-### Verify FFmpeg manually
-
-Open Command Prompt in the project folder and run:
-
-```text
-ffmpeg.exe -version
-```
-
-You can also check that the required encoders are present:
-
-```text
-ffmpeg.exe -hide_banner -encoders
-```
-
-Look for:
-
-```text
-libsvtav1
-libopus
-```
-
-The encoder performs these checks automatically when started.
-
 ## Usage
 
 1. Put one or more videos into the `Input` folder.
@@ -105,7 +76,7 @@ The encoder performs these checks automatically when started.
 6. Choose MKV or MP4.
 7. Confirm the encoding.
 
-Encoded files are written to:
+Encoded files are encoded to:
 
 ```text
 Output/
