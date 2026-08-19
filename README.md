@@ -1,4 +1,4 @@
-# Portable AV1 Encoder
+# Clip Encoder (AV1)
 
 A simple, portable Windows video encoder using **FFmpeg**, **SVT-AV1**, and **Opus**.
 
