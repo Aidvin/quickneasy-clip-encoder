@@ -1,168 +1,609 @@
-# Clip Encoder (AV1)
+@echo off
+setlocal EnableExtensions EnableDelayedExpansion
+title Portable Video Encoder
 
-A simple, portable Windows video encoder using **FFmpeg**, **SVT-AV1**, and **Opus**.
+:: ============================================================
+::                  PORTABLE VIDEO ENCODER
+:: ============================================================
 
-This project is currently under development.
+set "BASE=%~dp0"
+set "FFMPEG=%BASE%ffmpeg.exe"
+set "INPUT=%BASE%Input"
+set "OUTPUT=%BASE%Output"
 
-The project is designed to run from a single folder without installing FFmpeg system-wide or adding FFmpeg to the Windows PATH.
+if not exist "%INPUT%" mkdir "%INPUT%"
+if not exist "%OUTPUT%" mkdir "%OUTPUT%"
 
-**Important:** FFmpeg is its own thing and is intentionally **not included** in this repository.
+cls
 
-## Features
+echo ============================================================
+echo                  PORTABLE VIDEO ENCODER
+echo ============================================================
+echo.
+echo FFmpeg:
+echo %FFMPEG%
+echo.
+echo Input:
+echo %INPUT%
+echo.
+echo Output:
+echo %OUTPUT%
+echo.
+echo ============================================================
+echo.
 
-- Portable Windows setup
-- No installer required for the encoder itself
-- No system-wide FFmpeg installation required
-- Uses SVT-AV1 for AV1 video encoding
-- Uses Opus for audio
-- 10-bit `yuv420p10le` output
-- Batch processing of multiple videos
-- Interactive CRF selection
-- Interactive SVT-AV1 preset selection
-- Interactive audio bitrate selection
-- MKV or MP4 output
-- Preserves input metadata where supported
-- Automatically detects missing/incompatible FFmpeg
-- Handles filenames containing spaces
+:: ============================================================
+:: CHECK FFMPEG
+:: ============================================================
 
-## Requirements
+echo Checking FFmpeg...
+echo.
 
-- Windows OS
-- A Windows FFmpeg build containing:
-  - `libsvtav1`
-  - `libopus`
+if not exist "%FFMPEG%" (
+    echo [ERROR] ffmpeg.exe was not found!
+    echo.
+    echo Please place ffmpeg.exe in:
+    echo %BASE%
+    echo.
+    goto ERROR_EXIT
+)
 
-The encoder does not install FFmpeg for you.
+"%FFMPEG%" -version >nul 2>&1
 
-## Project structure
+if errorlevel 1 (
+    echo [ERROR] FFmpeg could not be started.
+    echo.
+    goto ERROR_EXIT
+)
 
-```text
-Portable-clip-encoder/
-├── Input/
-├── Output/
-├── Start Encoder.bat
-├── encode.ps1
-├── README.md
-├── LICENSE
-├── .gitignore
-└── NOTICE.md
-```
+for /f "tokens=1,*" %%A in ('"%FFMPEG%" -version 2^>nul') do (
+    echo [OK] %%A %%B
+    goto FFMPEG_VERSION_DONE
+)
 
-`ffmpeg.exe` is not included
+:FFMPEG_VERSION_DONE
 
-## Installing FFmpeg
+echo.
 
-FFmpeg's official download page is:
+:: ============================================================
+:: CHECK SVT-AV1
+:: ============================================================
 
-https://ffmpeg.org/download.html
+echo Checking SVT-AV1 encoder...
+echo.
 
-FFmpeg provides source code and links to Windows builds from third-party distributors. Download a Windows build that contains `ffmpeg.exe`.
+"%FFMPEG%" -hide_banner -encoders 2>nul | findstr /i "libsvtav1" >nul
 
-After extracting the build, place **`ffmpeg.exe`** directly in the project root:
+if errorlevel 1 (
+    echo [ERROR] SVT-AV1 encoder was not found.
+    echo.
+    echo Your FFmpeg build must include:
+    echo libsvtav1
+    echo.
+    goto ERROR_EXIT
+)
 
-```text
-Portable-clip-encoder/
-├── ffmpeg.exe
-├── Start Encoder.bat
-├── encode.ps1
-├── Input/
-└── Output/
-```
-## Usage
+echo [OK] SVT-AV1 encoder found.
+echo.
 
-1. Put one or more videos into the `Input` folder.
-2. Double-click `Start Encoder.bat`.
-3. Choose your CRF.
-4. Choose the SVT-AV1 preset.
-5. Choose the audio bitrate.
-6. Choose MKV or MP4.
-7. Confirm the encoding.
+:: ============================================================
+:: FIND VIDEOS
+:: ============================================================
 
-Encoded files are encoded to:
+set /a COUNT=0
 
-```text
-Output/
-```
+echo Videos found:
+echo.
 
-For example:
+for %%F in ("%INPUT%\*.mp4") do (
+    if exist "%%~fF" (
+        set /a COUNT+=1
+        set "FILE!COUNT!=%%~fF"
+        set "NAME!COUNT!=%%~nxF"
+    )
+)
 
-```text
-Input/
-└── example.mkv
+for %%F in ("%INPUT%\*.mov") do (
+    if exist "%%~fF" (
+        set /a COUNT+=1
+        set "FILE!COUNT!=%%~fF"
+        set "NAME!COUNT!=%%~nxF"
+    )
+)
 
-Output/
-└── example_AV1.mkv
-```
+for %%F in ("%INPUT%\*.mkv") do (
+    if exist "%%~fF" (
+        set /a COUNT+=1
+        set "FILE!COUNT!=%%~fF"
+        set "NAME!COUNT!=%%~nxF"
+    )
+)
 
-## Recommended settings
+for %%F in ("%INPUT%\*.avi") do (
+    if exist "%%~fF" (
+        set /a COUNT+=1
+        set "FILE!COUNT!=%%~fF"
+        set "NAME!COUNT!=%%~nxF"
+    )
+)
 
-For general AV1 compression testing:
+for %%F in ("%INPUT%\*.webm") do (
+    if exist "%%~fF" (
+        set /a COUNT+=1
+        set "FILE!COUNT!=%%~fF"
+        set "NAME!COUNT!=%%~nxF"
+    )
+)
 
-| Setting | Starting point |
-|---|---:|
-| Codec | SVT-AV1 |
-| CRF | 30 |
-| Preset | 4 |
-| Audio | Opus |
-| Audio bitrate | 128k |
-| Pixel format | 10-bit |
-| Container | MKV |
+for %%F in ("%INPUT%\*.m4v") do (
+    if exist "%%~fF" (
+        set /a COUNT+=1
+        set "FILE!COUNT!=%%~fF"
+        set "NAME!COUNT!=%%~nxF"
+    )
+)
 
-These are starting points, not universal quality recommendations. Different video content can require substantially different settings.
+if %COUNT% EQU 0 (
+    echo No supported video files were found.
+    echo.
+    echo Put videos inside:
+    echo %INPUT%
+    echo.
+    goto NORMAL_EXIT
+)
 
-### CRF
+for /L %%N in (1,1,%COUNT%) do (
+    echo %%N. !NAME%%N!
+)
 
-Lower CRF generally produces higher quality and larger files.
+echo.
+echo Total videos: %COUNT%
+echo.
 
-Typical starting points:
+:: ============================================================
+:: ENCODING SETTINGS
+:: ============================================================
 
-```text
-20  Very high quality
-25  High quality
-30  Good general starting point
-35  Smaller files
-40  Very small files
-```
+echo ============================================================
+echo                     ENCODING SETTINGS
+echo ============================================================
+echo.
+echo Codec:        AV1 (SVT-AV1)
+echo Audio:        ALL audio streams - Opus
+echo Pixel format: 10-bit
+echo Subtitles:    ALL subtitle streams preserved
+echo.
+echo CRF controls quality:
+echo.
+echo   20 = Very high quality / larger files
+echo   25 = High quality
+echo   30 = Good quality
+echo   35 = Smaller files
+echo   40 = Very small files
+echo.
 
-### Preset
+set "CRF="
+set /p "CRF=Enter CRF (default 30): "
 
-Lower SVT-AV1 preset numbers generally trade more encoding time for better compression efficiency.
+if not defined CRF set "CRF=30"
 
-Preset 4 is intended as a reasonable starting point for experimentation.
+echo.
+echo.
 
-## Why FFmpeg is not included
+:: ============================================================
+:: PRESET
+:: ============================================================
 
-This repository contains the encoder scripts, not FFmpeg itself.
+echo SVT-AV1 preset:
+echo.
+echo   1 = Slowest / best compression
+echo   2 = Very slow
+echo   3 = Slow
+echo   4 = Balanced
+echo   5 = Faster
+echo   6 = Fast
+echo   7 = Very fast
+echo   8 = Extremely fast
+echo   10 = Fastest
+echo.
 
-FFmpeg is a separate open-source project with its own licensing terms. FFmpeg states that most of its code is under LGPL v2.1+ while optional components can be GPL-licensed, and external libraries can affect the license of a particular build.
+set "PRESET="
+set /p "PRESET=Enter preset (default 4): "
 
-For that reason, this project does not redistribute an unknown third-party `ffmpeg.exe`.
+if not defined PRESET set "PRESET=4"
 
-See the official FFmpeg licensing information:
+echo.
+echo.
 
-https://ffmpeg.org/legal.html
+:: ============================================================
+:: THREAD COUNT
+:: ============================================================
 
-and:
+echo ============================================================
+echo                     THREAD COUNT
+echo ============================================================
+echo.
+echo Enter the number of CPU threads SVT-AV1 should use.
+echo.
+echo   0 = Automatic
+echo   1 = 1 thread
+echo   2 = 2 threads
+echo   4 = 4 threads
+echo   8 = 8 threads
+echo   12 = 12 threads
+echo   16 = 16 threads
+echo   etc.
+echo.
+echo Using more threads generally increases encoding speed,
+echo but also increases CPU usage and power consumption.
+echo.
 
-https://ffmpeg.org/doxygen/trunk/md_LICENSE.html
+set "THREADS="
+set /p "THREADS=Enter thread count (default 0 = automatic): "
 
-The FFmpeg executable is **not covered by this repository's MIT license**.
+if not defined THREADS set "THREADS=0"
 
-## License
+:: Validate that THREADS is numeric
+set /a THREADCHECK=%THREADS% >nul 2>&1
 
-The scripts and documentation in this repository are released under the MIT License.
+if %THREADCHECK% LSS 0 (
+    echo.
+    echo [ERROR] Invalid thread count.
+    echo.
+    goto ERROR_EXIT
+)
 
-FFmpeg remains a separate dependency and is licensed separately.
+echo.
+echo.
 
-See `LICENSE` and `NOTICE.md`.
+:: ============================================================
+:: VARIABLE BOOST
+:: ============================================================
 
-## Disclaimer
+echo ============================================================
+echo                    VARIABLE BOOST
+echo ============================================================
+echo.
+echo Variable Boost allows SVT-AV1 to spend more bits on
+echo areas with greater visual variance/detail.
+echo.
+echo   1 = Enabled
+echo   2 = Disabled
+echo.
 
-This project is provided "as is", without warranty.
+set "BOOST="
+set /p "BOOST=Enable Variable Boost? (default 2): "
 
-The author of this project is not affiliated with or endorsed by the FFmpeg project.
+if not defined BOOST set "BOOST=2"
 
-Users are responsible for complying with the licenses applicable to the FFmpeg build they choose to download and use.
-- Resume support
-- Logging
-- Drag-and-drop encoding
+if "%BOOST%"=="1" (
+    set "BOOSTPARAM=enable-variance-boost=1"
+    set "BOOSTNAME=Enabled"
+)
+
+if "%BOOST%"=="2" (
+    set "BOOSTPARAM=enable-variance-boost=0"
+    set "BOOSTNAME=Disabled"
+)
+
+if not defined BOOSTPARAM (
+    echo.
+    echo [ERROR] Invalid Variable Boost selection.
+    echo.
+    goto ERROR_EXIT
+)
+
+echo.
+echo.
+
+:: ============================================================
+:: BUILD SVT-AV1 PARAMETERS
+:: ============================================================
+
+set "SVT_PARAMS=%BOOSTPARAM%"
+
+if not "%THREADS%"=="0" (
+    set "SVT_PARAMS=%SVT_PARAMS%:lp=%THREADS%"
+)
+
+:: ============================================================
+:: AUDIO
+:: ============================================================
+
+echo ============================================================
+echo                         AUDIO
+echo ============================================================
+echo.
+echo ALL input audio streams will be included.
+echo ALL audio streams will be encoded to Opus.
+echo.
+echo Examples:
+echo   English 5.1
+echo   English 2.0
+echo   Japanese 5.1
+echo   Commentary 2.0
+echo.
+echo All will be retained as separate audio tracks.
+echo.
+echo Audio bitrate:
+echo.
+echo   64k  = Small
+echo   96k  = Good
+echo   128k = Recommended
+echo   160k = High
+echo   192k = Very high
+echo.
+
+set "AUDIO="
+set /p "AUDIO=Enter audio bitrate (default 128k): "
+
+if not defined AUDIO set "AUDIO=128k"
+
+echo.
+echo.
+
+:: ============================================================
+:: RESOLUTION
+:: ============================================================
+
+echo Resolution:
+echo.
+echo   1 = Original resolution
+echo   2 = 1080p
+echo   3 = 720p
+echo   4 = 540p
+echo   5 = 480p
+echo.
+
+set "RESOLUTION="
+set /p "RESOLUTION=Choose resolution (default 1): "
+
+if not defined RESOLUTION set "RESOLUTION=1"
+
+if "%RESOLUTION%"=="1" (
+    set "SCALE="
+    set "RESNAME=Original"
+)
+
+if "%RESOLUTION%"=="2" (
+    set "SCALE=-vf scale='min(1920,iw)':'min(1080,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2"
+    set "RESNAME=1080p"
+)
+
+if "%RESOLUTION%"=="3" (
+    set "SCALE=-vf scale='min(1280,iw)':'min(720,ih)':force_original_aspect_ratio=decrease:force_original_aspect_ratio=decrease:force_divisible_by=2"
+    set "RESNAME=720p"
+)
+
+if "%RESOLUTION%"=="4" (
+    set "SCALE=-vf scale='min(960,iw)':'min(540,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2"
+    set "RESNAME=540p"
+)
+
+if "%RESOLUTION%"=="5" (
+    set "SCALE=-vf scale='min(854,iw)':'min(480,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2"
+    set "RESNAME=480p"
+)
+
+if not defined RESNAME (
+    echo.
+    echo [ERROR] Invalid resolution.
+    echo.
+    goto ERROR_EXIT
+)
+
+echo.
+echo.
+
+:: ============================================================
+:: OUTPUT FORMAT
+:: ============================================================
+
+echo Output format:
+echo.
+echo 1 = MKV
+echo 2 = MP4
+echo.
+
+set "FORMAT="
+set /p "FORMAT=Choose output format (default 1): "
+
+if not defined FORMAT set "FORMAT=1"
+
+if "%FORMAT%"=="1" set "EXT=mkv"
+if "%FORMAT%"=="2" set "EXT=mp4"
+
+if not defined EXT (
+    echo.
+    echo [ERROR] Invalid output format.
+    echo.
+    goto ERROR_EXIT
+)
+
+:: ============================================================
+:: FINAL SETTINGS
+:: ============================================================
+
+echo.
+echo ============================================================
+echo                     FINAL SETTINGS
+echo ============================================================
+echo.
+echo Videos:        %COUNT%
+echo Codec:         AV1 / SVT-AV1
+echo Resolution:    %RESNAME%
+echo CRF:           %CRF%
+echo Preset:        %PRESET%
+echo Threads:       %THREADS%
+echo Variable Boost:%BOOSTNAME%
+echo Audio:         ALL streams -> Opus %AUDIO%
+echo Subtitles:     ALL streams preserved
+echo Pixel format:  10-bit
+echo Container:     .%EXT%
+echo.
+echo SVT-AV1 params:
+echo %SVT_PARAMS%
+echo.
+echo ============================================================
+echo.
+
+choice /C YN /N /M "Start encoding? (Y/N): "
+
+if errorlevel 2 (
+    echo.
+    echo Encoding cancelled.
+    echo.
+    goto NORMAL_EXIT
+)
+
+if errorlevel 1 goto START_ENCODING
+
+:: ============================================================
+:: START ENCODING
+:: ============================================================
+
+:START_ENCODING
+
+echo.
+echo ============================================================
+echo                    STARTING ENCODING
+echo ============================================================
+echo.
+
+set /a SUCCESS=0
+set /a FAILED=0
+
+for /L %%N in (1,1,%COUNT%) do (
+
+    echo.
+    echo ============================================================
+    echo                    ENCODING %%N OF %COUNT%
+    echo ============================================================
+    echo.
+
+    set "CURRENT=!FILE%%N!"
+    set "CURRENTNAME=!NAME%%N!"
+
+    for %%A in ("!CURRENT!") do (
+        set "BASENAME=%%~nA"
+    )
+
+    set "OUTFILE=%OUTPUT%\!BASENAME!_AV1.%EXT%"
+
+    echo Input:
+    echo !CURRENT!
+    echo.
+    echo Output:
+    echo !OUTFILE!
+    echo.
+    echo All audio streams will be encoded to Opus.
+    echo All subtitle streams will be preserved.
+    echo.
+    echo Starting FFmpeg...
+    echo.
+
+    "%FFMPEG%" ^
+        -hide_banner ^
+        -i "!CURRENT!" ^
+        -map 0:v:0 ^
+        -map 0:a? ^
+        -map 0:s? ^
+        -map 0:t? ^
+        -c:v libsvtav1 ^
+        -preset %PRESET% ^
+        -crf %CRF% ^
+        -svtav1-params "%SVT_PARAMS%" ^
+        !SCALE! ^
+        -pix_fmt yuv420p10le ^
+        -c:a libopus ^
+        -b:a %AUDIO% ^
+        -c:s copy ^
+        -map_metadata 0 ^
+        -map_chapters 0 ^
+        -y ^
+        "!OUTFILE!"
+
+    if errorlevel 1 (
+        echo.
+        echo ============================================================
+        echo                    ENCODING FAILED
+        echo ============================================================
+        echo.
+        echo File:
+        echo !CURRENTNAME!
+        echo.
+        echo FFmpeg returned an error.
+        echo.
+
+        set /a FAILED+=1
+    ) else (
+        echo.
+        echo ============================================================
+        echo                   ENCODING SUCCESSFUL
+        echo ============================================================
+        echo.
+        echo File:
+        echo !CURRENTNAME!
+        echo.
+        echo Output:
+        echo !OUTFILE!
+        echo.
+
+        set /a SUCCESS+=1
+    )
+)
+
+:: ============================================================
+:: COMPLETE
+:: ============================================================
+
+echo.
+echo.
+echo ============================================================
+echo                    ENCODING COMPLETE
+echo ============================================================
+echo.
+echo Total files: %COUNT%
+echo Successful:  %SUCCESS%
+echo Failed:      %FAILED%
+echo.
+echo Output folder:
+echo %OUTPUT%
+echo.
+echo ============================================================
+echo.
+
+goto NORMAL_EXIT
+
+
+:: ============================================================
+:: ERROR EXIT
+:: ============================================================
+
+:ERROR_EXIT
+
+echo.
+echo ============================================================
+echo                         ERROR
+echo ============================================================
+echo.
+echo The encoder could not continue.
+echo.
+echo The window will remain open so you can read the error.
+echo.
+
+pause
+exit /b 1
+
+
+:: ============================================================
+:: NORMAL EXIT
+:: ============================================================
+
+:NORMAL_EXIT
+
+echo.
+echo Press any key to exit...
+pause >nul
+
+exit /b 0
